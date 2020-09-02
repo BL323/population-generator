@@ -2,6 +2,7 @@ from GridCells import Cell, CellLoader
 from AgeCharacteristics import AgeCharacteristic, AgeCharacteristicLoader
 from AgeGroupings import AgeGrouping, AgeGroupingLoader
 from PaRUs import PaRU, PaRUsWriter
+from PaRGs import PaRG, PaRGsWriter
 from itertools import islice
 
 import math
@@ -74,7 +75,9 @@ def TakeItems(arry, num):
 
 
 def GroupPaRUsForCell(parus_for_cell, age_groupings):
+    global parg_id_count
     output_parus_for_cell = []
+    output_pargs_for_cell = []
     parus_ovr65 = list(filter(lambda x: x.Age_Group == "OVR65", parus_for_cell))
     parus_16_65 = list(filter(lambda x: x.Age_Group == "16-65", parus_for_cell))
     parus_0_15 = list(filter(lambda x: x.Age_Group == "0-15", parus_for_cell))
@@ -84,17 +87,17 @@ def GroupPaRUsForCell(parus_for_cell, age_groupings):
     num_parus_0_15 = len(parus_0_15)
 
     for group in age_groupings:
+        print("------")
+        print("Processing Group: " + group.Group) 
         target = group.Target
         if target == "OVR65":
+            # target for percentage is OVR65
             total_in_group = math.floor(num_parus_ovr65 * group.Percentage)
             required_per_group = group.Num_ovr_65
             candidates_in_group = TakeItems(parus_ovr65, total_in_group)
-
             num_groups = math.floor(total_in_group / required_per_group)
             for i in range(num_groups):
-                global parg_id_count
                 parg_id_count += 1
-                start = i * group.Num_ovr_65
                 parg = TakeItems(candidates_in_group, group.Num_ovr_65)
                 for paru in parg:
                     paru.SetPargIndex(parg_id_count)
@@ -107,11 +110,37 @@ def GroupPaRUsForCell(parus_for_cell, age_groupings):
                     parg_id_count += 1
                     paru.SetPargIndex(parg_id_count)
                     output_parus_for_cell.append(paru)
+        
+        if target == "16-65":
+            total_in_group = math.floor(num_parus_16_65 * group.Percentage)
+            candidates_in_group = TakeItems(parus_16_65, total_in_group)
+            required_per_group = group.Num_16_65
+            num_groups = math.floor(total_in_group / required_per_group)
+
+            if(group.Num_0_15 > 0):
+                print("has children")
+
+            for i in range(num_groups):
+                parg_id_count += 1
+                parg = TakeItems(candidates_in_group, group.Num_16_65)
+                for paru in parg:
+                    paru.SetPargIndex(parg_id_count)
+                    output_parus_for_cell.append(paru)
+                childrenParg = TakeItems(parus_0_15, group.Num_0_15)
+                for child_Parg in childrenParg:
+                    child_Parg.SetPargIndex(parg_id_count)
+                    output_parus_for_cell.append(child_Parg)
+
+            if(len(candidates_in_group) > 0):
+                # create in their own group
+                for paru in candidates_in_group:
+                    candidates_in_group.remove(paru)
+                    parg_id_count += 1
+                    paru.SetPargIndex(parg_id_count)
+                    output_parus_for_cell.append(paru)
 
 
-
-            print("Group: " + group.Group) 
-            print("------")
+   
 
     # ensure any remaining PaRUs in cell are added to a group
     for par_ovr65 in parus_ovr65:
@@ -120,6 +149,17 @@ def GroupPaRUsForCell(parus_for_cell, age_groupings):
         par_ovr65.SetPargIndex(parg_id_count)
         output_parus_for_cell.append(par_ovr65)
         
+    for par_16_65 in parus_16_65:
+        parus_16_65.remove(par_16_65)
+        parg_id_count += 1
+        par_16_65.SetPargIndex(parg_id_count)
+        output_parus_for_cell.append(par_16_65)
+
+    for par_0_15 in parus_0_15:
+        parus_0_15.remove(par_0_15)
+        parg_id_count += 1
+        par_0_15.SetPargIndex(parg_id_count)
+        output_parus_for_cell.append(par_0_15)
 
     return output_parus_for_cell, "erff"
 

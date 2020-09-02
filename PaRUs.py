@@ -1,6 +1,5 @@
 import csv
 
-
 class PaRU:
     ID = -1
     Grid_Number = -1
