@@ -74,7 +74,7 @@ def TakeItems(arry, num):
     return output
 
 
-def GroupPaRUsForCell(parus_for_cell, age_groupings):
+def GroupPaRUsForCell(grid_Id, parus_for_cell, age_groupings):
     global parg_id_count
     output_parus_for_cell = []
     output_pargs_for_cell = []
@@ -84,11 +84,8 @@ def GroupPaRUsForCell(parus_for_cell, age_groupings):
 
     num_parus_ovr65 = len(parus_ovr65)
     num_parus_16_65 = len(parus_16_65)
-    num_parus_0_15 = len(parus_0_15)
 
     for group in age_groupings:
-        print("------")
-        print("Processing Group: " + group.Group) 
         target = group.Target
         if target == "OVR65":
             # target for percentage is OVR65
@@ -98,16 +95,18 @@ def GroupPaRUsForCell(parus_for_cell, age_groupings):
             num_groups = math.floor(total_in_group / required_per_group)
             for i in range(num_groups):
                 parg_id_count += 1
-                parg = TakeItems(candidates_in_group, group.Num_ovr_65)
-                for paru in parg:
+                output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
+                pargs = TakeItems(candidates_in_group, group.Num_ovr_65)
+                for paru in pargs:
                     paru.SetPargIndex(parg_id_count)
                     output_parus_for_cell.append(paru)
 
             if(len(candidates_in_group) > 0):
                 # create in their own group
-                for paru in candidates_in_group:
-                    candidates_in_group.remove(paru)
+                for n in range(len(candidates_in_group)):
+                    paru = candidates_in_group.pop()
                     parg_id_count += 1
+                    output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
                     paru.SetPargIndex(parg_id_count)
                     output_parus_for_cell.append(paru)
         
@@ -117,56 +116,54 @@ def GroupPaRUsForCell(parus_for_cell, age_groupings):
             required_per_group = group.Num_16_65
             num_groups = math.floor(total_in_group / required_per_group)
 
-            if(group.Num_0_15 > 0):
-                print("has children")
-
             for i in range(num_groups):
                 parg_id_count += 1
-                parg = TakeItems(candidates_in_group, group.Num_16_65)
-                for paru in parg:
+                output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
+                pargs = TakeItems(candidates_in_group, group.Num_16_65)
+                for paru in pargs:
                     paru.SetPargIndex(parg_id_count)
                     output_parus_for_cell.append(paru)
-                childrenParg = TakeItems(parus_0_15, group.Num_0_15)
-                for child_Parg in childrenParg:
+                childrenPargs = TakeItems(parus_0_15, group.Num_0_15)
+                for child_Parg in childrenPargs:
                     child_Parg.SetPargIndex(parg_id_count)
                     output_parus_for_cell.append(child_Parg)
 
             if(len(candidates_in_group) > 0):
                 # create in their own group
-                for paru in candidates_in_group:
-                    candidates_in_group.remove(paru)
+                for n in range(len(candidates_in_group)):
+                    paru = candidates_in_group.pop()
                     parg_id_count += 1
+                    output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
                     paru.SetPargIndex(parg_id_count)
                     output_parus_for_cell.append(paru)
 
 
-   
-
     # ensure any remaining PaRUs in cell are added to a group
-    for par_ovr65 in parus_ovr65:
-        parus_ovr65.remove(par_ovr65)
+    for n in range(len(parus_ovr65)):
+        par_ovr65 = parus_ovr65.pop()
         parg_id_count += 1
+        output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
         par_ovr65.SetPargIndex(parg_id_count)
         output_parus_for_cell.append(par_ovr65)
         
-    for par_16_65 in parus_16_65:
-        parus_16_65.remove(par_16_65)
+    for n in range(len(parus_16_65)):
+        par_16_65 = parus_16_65.pop()
         parg_id_count += 1
+        output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
         par_16_65.SetPargIndex(parg_id_count)
         output_parus_for_cell.append(par_16_65)
 
-    for par_0_15 in parus_0_15:
-        parus_0_15.remove(par_0_15)
+    for n in range(len(parus_0_15)):
+        par_0_15 = parus_0_15.pop()
         parg_id_count += 1
+        output_pargs_for_cell.append(PaRG(parg_id_count, grid_Id))
         par_0_15.SetPargIndex(parg_id_count)
         output_parus_for_cell.append(par_0_15)
 
-    return output_parus_for_cell, "erff"
-
-
-
+    return output_parus_for_cell, output_pargs_for_cell
 
 parus_writer = PaRUsWriter()
+pargs_writer = PaRGsWriter()
 
 # start the process for each grid cell
 isFirstCell = True
@@ -177,11 +174,16 @@ for cell in grid_cells:
     parus_for_cell = GeneratePaRUsForCell(cell, age_characteristics)
 
     # group parus per cell
-    parus_for_cell, pargs_for_cell  = GroupPaRUsForCell(parus_for_cell, age_groupings)
+    parus_for_cell, pargs_for_cell  = GroupPaRUsForCell(cell.Grid_Id, parus_for_cell, age_groupings)
 
-    f = []
+    print("\tGrid cell #{0}, PaRUs: {1}, PaRGs: {2}".format(cell.Grid_Id, len(parus_for_cell), len(pargs_for_cell)))
+
     parus_writer.ToCsv(
         "OutputDataFiles/Table 2 - Generated Output.csv", isFirstCell, parus_for_cell)
+
+    pargs_writer.ToCsv(
+        "OutputDataFiles/Table 5 - Generated Output.csv", isFirstCell, pargs_for_cell)
+
     isFirstCell = False
 
 
