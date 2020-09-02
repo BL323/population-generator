@@ -46,7 +46,7 @@ class PaRU:
 
 class PaRUsWriter:
     def ToCsv(self, filename, includeHeader, parus):
-        with open(filename, mode='a') as paru_file:
+        with open(filename, mode='a+') as paru_file:
             paru_writer = csv.writer(
                 paru_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
